@@ -510,6 +510,37 @@ lazy_static! {
     };
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum WorldEditPosition {
+    First,
+    Second,
+}
+
+impl WorldEditPosition {
+    pub fn to_i(self) -> i32 { // TODO into() ?
+        match self {
+            WorldEditPosition::First => 0,
+            WorldEditPosition::Second => 1,
+        }
+    }
+
+    pub fn opposite(self) -> Self {
+        match self {
+            WorldEditPosition::First => WorldEditPosition::Second,
+            WorldEditPosition::Second => WorldEditPosition::First,
+        }
+    }
+}
+
+impl fmt::Display for WorldEditPosition {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self {
+            WorldEditPosition::First => write!(f, "First"),
+            WorldEditPosition::Second => write!(f, "Second"),
+        }
+    }
+}
+
 pub struct WorldEditPatternPart {
     pub weight: f32,
     pub block_id: u32,
@@ -1236,93 +1267,10 @@ fn execute_expand(mut ctx: CommandExecuteContext<'_>) {
     let amount = ctx.arguments[0].unwrap_uint();
     let direction = ctx.arguments[1].unwrap_direction();
     let player = ctx.get_player_mut();
-    let first_pos = player.first_position.unwrap();
-    let second_pos = player.second_position.unwrap();
 
-    match direction {
-        BlockFacing::Up => {
-            let (pos, set_fn) = if first_pos.y > second_pos.y {
-                (
-                    first_pos,
-                    Player::worldedit_set_first_position as fn(&mut Player, BlockPos),
-                )
-            } else {
-                (
-                    second_pos,
-                    Player::worldedit_set_second_position as fn(&mut Player, BlockPos),
-                )
-            };
-            set_fn(player, BlockPos::new(pos.x, pos.y + amount as i32, pos.z));
-        }
-        BlockFacing::Down => {
-            let (pos, set_fn) = if first_pos.y < second_pos.y {
-                (
-                    first_pos,
-                    Player::worldedit_set_first_position as fn(&mut Player, BlockPos),
-                )
-            } else {
-                (
-                    second_pos,
-                    Player::worldedit_set_second_position as fn(&mut Player, BlockPos),
-                )
-            };
-            set_fn(player, BlockPos::new(pos.x, pos.y - amount as i32, pos.z));
-        }
-        BlockFacing::East => {
-            let (pos, set_fn) = if first_pos.x > second_pos.y {
-                (
-                    first_pos,
-                    Player::worldedit_set_first_position as fn(&mut Player, BlockPos),
-                )
-            } else {
-                (
-                    second_pos,
-                    Player::worldedit_set_second_position as fn(&mut Player, BlockPos),
-                )
-            };
-            set_fn(player, BlockPos::new(pos.x + amount as i32, pos.y, pos.z));
-        }
-        BlockFacing::West => {
-            let (pos, set_fn) = if first_pos.x < second_pos.x {
-                (
-                    first_pos,
-                    Player::worldedit_set_first_position as fn(&mut Player, BlockPos),
-                )
-            } else {
-                (
-                    second_pos,
-                    Player::worldedit_set_second_position as fn(&mut Player, BlockPos),
-                )
-            };
-            set_fn(player, BlockPos::new(pos.x - amount as i32, pos.y, pos.z));
-        }
-        BlockFacing::North => {
-            let (pos, set_fn) = if first_pos.z < second_pos.z {
-                (
-                    first_pos,
-                    Player::worldedit_set_first_position as fn(&mut Player, BlockPos),
-                )
-            } else {
-                (
-                    second_pos,
-                    Player::worldedit_set_second_position as fn(&mut Player, BlockPos),
-                )
-            };
-            set_fn(player, BlockPos::new(pos.x, pos.y, pos.z + amount as i32));
-        }
-        BlockFacing::South => {
-            let (pos, set_fn) = if first_pos.z > second_pos.z {
-                (
-                    first_pos,
-                    Player::worldedit_set_first_position as fn(&mut Player, BlockPos),
-                )
-            } else {
-                (
-                    second_pos,
-                    Player::worldedit_set_second_position as fn(&mut Player, BlockPos),
-                )
-            };
-            set_fn(player, BlockPos::new(pos.x, pos.y, pos.z - amount as i32));
+    if let Some(n) = player.worldedit_pos_on_side(direction) {
+        if let Some(pos) = player.worldedit_position(n) {
+            player.worldedit_set_position(pos + BlockPos::from_direction(direction) * amount as i32, n);
         }
     }
 
@@ -1336,90 +1284,9 @@ fn execute_contract(mut ctx: CommandExecuteContext<'_>) {
     let first_pos = player.first_position.unwrap();
     let second_pos = player.second_position.unwrap();
 
-    match direction {
-        BlockFacing::Up => {
-            let (pos, set_fn) = if first_pos.y > second_pos.y {
-                (
-                    first_pos,
-                    Player::worldedit_set_first_position as fn(&mut Player, BlockPos),
-                )
-            } else {
-                (
-                    second_pos,
-                    Player::worldedit_set_second_position as fn(&mut Player, BlockPos),
-                )
-            };
-            set_fn(player, BlockPos::new(pos.x, pos.y - amount as i32, pos.z));
-        }
-        BlockFacing::Down => {
-            let (pos, set_fn) = if first_pos.y < second_pos.y {
-                (
-                    first_pos,
-                    Player::worldedit_set_first_position as fn(&mut Player, BlockPos),
-                )
-            } else {
-                (
-                    second_pos,
-                    Player::worldedit_set_second_position as fn(&mut Player, BlockPos),
-                )
-            };
-            set_fn(player, BlockPos::new(pos.x, pos.y + amount as i32, pos.z));
-        }
-        BlockFacing::East => {
-            let (pos, set_fn) = if first_pos.x > second_pos.y {
-                (
-                    first_pos,
-                    Player::worldedit_set_first_position as fn(&mut Player, BlockPos),
-                )
-            } else {
-                (
-                    second_pos,
-                    Player::worldedit_set_second_position as fn(&mut Player, BlockPos),
-                )
-            };
-            set_fn(player, BlockPos::new(pos.x - amount as i32, pos.y, pos.z));
-        }
-        BlockFacing::West => {
-            let (pos, set_fn) = if first_pos.x < second_pos.x {
-                (
-                    first_pos,
-                    Player::worldedit_set_first_position as fn(&mut Player, BlockPos),
-                )
-            } else {
-                (
-                    second_pos,
-                    Player::worldedit_set_second_position as fn(&mut Player, BlockPos),
-                )
-            };
-            set_fn(player, BlockPos::new(pos.x + amount as i32, pos.y, pos.z));
-        }
-        BlockFacing::North => {
-            let (pos, set_fn) = if first_pos.z < second_pos.z {
-                (
-                    first_pos,
-                    Player::worldedit_set_first_position as fn(&mut Player, BlockPos),
-                )
-            } else {
-                (
-                    second_pos,
-                    Player::worldedit_set_second_position as fn(&mut Player, BlockPos),
-                )
-            };
-            set_fn(player, BlockPos::new(pos.x, pos.y, pos.z - amount as i32));
-        }
-        BlockFacing::South => {
-            let (pos, set_fn) = if first_pos.z > second_pos.z {
-                (
-                    first_pos,
-                    Player::worldedit_set_first_position as fn(&mut Player, BlockPos),
-                )
-            } else {
-                (
-                    second_pos,
-                    Player::worldedit_set_second_position as fn(&mut Player, BlockPos),
-                )
-            };
-            set_fn(player, BlockPos::new(pos.x, pos.y, pos.z + amount as i32));
+    if let Some(n) = player.worldedit_pos_on_side(direction) {
+        if let Some(pos) = player.worldedit_position(n.opposite()) {
+            player.worldedit_set_position(pos + BlockPos::from_direction(direction) * amount as i32, n);
         }
     }
 

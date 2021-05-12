@@ -3,11 +3,12 @@ use crate::chat::ChatComponent;
 use crate::items::{Item, ItemStack};
 use crate::network::packets::clientbound::*;
 use crate::network::NetworkClient;
-use crate::plot::worldedit::{WorldEditClipboard, WorldEditUndo};
+use crate::plot::worldedit::{WorldEditPosition, WorldEditClipboard, WorldEditUndo};
 use byteorder::{BigEndian, ReadBytesExt};
 use log::warn;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::cmp::Ordering;
 use std::fmt;
 use std::fs::{self, OpenOptions};
 use std::io::{Cursor, Write};
@@ -408,22 +409,44 @@ impl Player {
         );
     }
 
-    pub fn worldedit_set_first_position(&mut self, pos: BlockPos) {
+    pub fn worldedit_position(&self, n: WorldEditPosition) -> Option<BlockPos> {
+        match n {
+            WorldEditPosition::First => self.first_position,
+            WorldEditPosition::Second => self.second_position,
+        }
+    }
+
+    pub fn worldedit_set_position(&mut self, pos: BlockPos, n: WorldEditPosition) {
         self.send_worldedit_message(&format!(
-            "First position set to ({}, {}, {})",
-            pos.x, pos.y, pos.z
+            "{} position set to ({}, {}, {})",
+            n, pos.x, pos.y, pos.z
         ));
-        self.first_position = Some(pos);
-        self.worldedit_send_cui(&format!("p|0|{}|{}|{}|0", pos.x, pos.y, pos.z));
+        match n {
+            WorldEditPosition::First => self.first_position = Some(pos),
+            WorldEditPosition::Second => self.second_position = Some(pos),
+        };
+        self.worldedit_send_cui(&format!("p|{}|{}|{}|{}|0", n.to_i(), pos.x, pos.y, pos.z));
+    }
+
+    pub fn worldedit_set_first_position(&mut self, pos: BlockPos) {
+        self.worldedit_set_position(pos, WorldEditPosition::First)
     }
 
     pub fn worldedit_set_second_position(&mut self, pos: BlockPos) {
-        self.send_worldedit_message(&format!(
-            "Second position set to ({}, {}, {})",
-            pos.x, pos.y, pos.z
-        ));
-        self.second_position = Some(pos);
-        self.worldedit_send_cui(&format!("p|1|{}|{}|{}|0", pos.x, pos.y, pos.z));
+        self.worldedit_set_position(pos, WorldEditPosition::Second)
+    }
+
+    pub fn worldedit_pos_on_side(&self, facing: BlockFacing) -> Option<WorldEditPosition> {
+        if self.first_position.is_none() || self.second_position.is_none() {
+            return None
+        }
+        let pos1 = self.first_position.unwrap();
+        let pos2 = self.second_position.unwrap();
+        match pos1.compare_direction(pos2, facing) {
+            Ordering::Equal => Some(WorldEditPosition::First),
+            Ordering::Less => Some(WorldEditPosition::First),
+            Ordering::Greater => Some(WorldEditPosition::Second),
+        }
     }
 
     pub fn worldedit_send_cui(&mut self, message: &str) {

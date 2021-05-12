@@ -140,6 +140,40 @@ impl BlockPos {
             z: std::cmp::min(self.z, other.z),
         }
     }
+
+    pub fn compare_direction(self, other: BlockPos, direction: BlockFacing) -> std::cmp::Ordering {
+        match direction {
+            BlockFacing::North => self.z.cmp(&other.z),
+            BlockFacing::South => other.z.cmp(&self.z),
+            BlockFacing::West => self.x.cmp(&other.x),
+            BlockFacing::East => other.x.cmp(&self.x),
+            BlockFacing::Up => self.y.cmp(&other.y),
+            BlockFacing::Down => other.y.cmp(&self.y),
+        }
+    }
+
+    pub fn from_direction(direction: BlockFacing) -> BlockPos {
+        match direction {
+            BlockFacing::North => BlockPos::new(0, 0, -1),
+            BlockFacing::South => BlockPos::new(0, 0, 1),
+            BlockFacing::West => BlockPos::new(-1, 0, 0),
+            BlockFacing::East => BlockPos::new(1, 0, 0),
+            BlockFacing::Up => BlockPos::new(0, 1, 0),
+            BlockFacing::Down => BlockPos::new(0, -1, 0),
+        }
+    }
+}
+
+impl std::ops::Add for BlockPos {
+    type Output = BlockPos;
+
+    fn add(self, rhs: BlockPos) -> BlockPos {
+        BlockPos {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+            z: self.z + rhs.z,
+        }
+    }
 }
 
 impl std::ops::Sub for BlockPos {
@@ -150,6 +184,18 @@ impl std::ops::Sub for BlockPos {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
             z: self.z - rhs.z,
+        }
+    }
+}
+
+impl std::ops::Mul<i32> for BlockPos {
+    type Output = BlockPos;
+
+    fn mul(self, rhs: i32) -> BlockPos {
+        BlockPos {
+            x: self.x * rhs,
+            y: self.y * rhs,
+            z: self.z * rhs,
         }
     }
 }
@@ -347,6 +393,17 @@ impl BlockFacing {
             West => South,
             South => East,
             East => North,
+            other => other,
+        }
+    }
+
+    pub fn opposite(self) -> BlockFacing {
+        use BlockFacing::*;
+        match self {
+            North => South,
+            South => North,
+            East => West,
+            West => East,
             other => other,
         }
     }
